@@ -47,18 +47,95 @@ class SlugBrain:
 
   def __init__(self, body):
     self.body = body
-
+    self.selec_slug_attack = None
+    self.selec_slug_build = None
+    self.selec_slug_resource= None
+    self.have_resource = False
+    self.state = 'idle'
 
   def handle_event(self, message, details):
+
+    if message == 'order':
+      world = self.body.world
+      if details == 'i':
+        self.state = 'idle'      
+      elif details == 'a':
+        self.state = 'attack'
+        self.selec_slug_attack = self.body
+        self.body.set_alarm(1)
+      elif details == 'b':
+        self.state = 'build'
+        self.selec_slug_build = self.body
+        self.body.set_alarm(1)
+      elif details == 'h':
+        self.state = 'harvest' 
+        self.selec_slug_resource = self.body
+        self.body.set_alarm(1)
+      elif (not isinstance (details, dict)) and not None and (not isinstance (details, str)): 
+        self.state = 'goto'
+        self.dest = details
+        self.selec_slug_attack = None
+        self.selec_slug_build = None
+        self.selec_slug_resource= None
+      else:
+        print('invalue key. i for idle; a for attack; b for build; h for harvest; right_botton_down for go_to')
+
+    if self.state == 'goto':
+      self.target = self.dest
+      self.body.go_to(self.target)
+
+    if self.state == 'idle':
+      self.body.stop()
+
+    if self.state == 'attack':
+      if message == 'timer':
+        try:  
+          self.target = self.body.find_nearest('Mantis')
+          self.body.follow(self.target)
+        except ValueError:
+          self.state = 'idle'
+      elif message == 'collide' and details['what'] == 'Mantis' and self.selec_slug_attack == self.body:
+        mantis = details['who']
+        mantis.amount -= 0.05
+      self.body.set_alarm(1)
+
+    if self.state == 'build':
+      if message == 'timer': 
+        self.target = self.body.find_nearest('Nest')
+        self.body.go_to(self.target)
+      elif message == 'collide' and details['what'] == 'Nest' and self.selec_slug_build == self.body:
+        nest = details['who']
+        nest.amount += 0.01
+      self.body.set_alarm(1)
+
+    if self.state == 'harvest':
+      if self.have_resource:
+        if message == 'timer':
+          self.target = self.body.find_nearest('Nest')
+          self.body.go_to(self.target)
+        elif message == 'collide' and details['what'] == 'Nest'and self.selec_slug_build == self.body:
+          nest = details['who']
+          #nest.amount += 0.01
+          self.have_resource = False
+      else:
+        if message == 'timer':
+          self.target = self.body.find_nearest('Resource')
+          self.body.go_to(self.target)
+        elif message == 'collide' and details['what'] == 'Resource' and self.selec_slug_resource == self.body:
+          self.selec_slug_build = self.selec_slug_resource
+          resources = details['who']
+          resources.amount -= 0.25
+          self.have_resource = True
+      self.body.set_alarm(1)
+
     # TODO: IMPLEMENT THIS METHOD
     #  (Use helper methods and classes to keep your code organized where
-    #  approprioate.)
-    pass    
+    #  approprioate.)    
 
 world_specification = {
-  'worldgen_seed': 13, # comment-out to randomize
+  #'worldgen_seed': 13, # comment-out to randomize
   'nests': 2,
-  'obstacles': 25,
+  'obstacles': 5,
   'resources': 5,
   'slugs': 5,
   'mantises': 5,
