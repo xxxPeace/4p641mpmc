@@ -52,7 +52,7 @@ class SlugBrain:
     self.selec_slug_resource= None
     self.have_resource = False
     self.state = 'idle'
-
+    self.tempstate = 'idle'
   def handle_event(self, message, details):
 
     if message == 'order':
@@ -80,14 +80,31 @@ class SlugBrain:
       else:
         print('invalue key. i for idle; a for attack; b for build; h for harvest; right_botton_down for go_to')
 
+    if self.state == 'flee':
+        self.target = self.body.find_nearest('Nest')
+        self.body.go_to(self.target)
+        if message == 'collide' and details['what'] == 'Nest':
+          self.body.amount += 0.01
+          if self.body.amount == 1:
+            self.state = self.tempstate
+            
     if self.state == 'goto':
+      if self.body.amount < 0.5:
+        self.state = 'flee'
+        self.tempstate = 'idle'
       self.target = self.dest
       self.body.go_to(self.target)
 
     if self.state == 'idle':
+      if self.body.amount < 0.5:
+        self.state = 'flee'
+        self.tempstate = 'idle'
       self.body.stop()
 
     if self.state == 'attack':
+      if self.body.amount < 0.5:
+        self.state = 'flee'
+        self.tempstate = 'attack'
       if message == 'timer':
         try:  
           self.target = self.body.find_nearest('Mantis')
@@ -100,6 +117,9 @@ class SlugBrain:
       self.body.set_alarm(1)
 
     if self.state == 'build':
+      if self.body.amount < 0.5:
+        self.state = 'flee'
+        self.tempstate = 'build'
       if message == 'timer': 
         self.target = self.body.find_nearest('Nest')
         self.body.go_to(self.target)
@@ -109,6 +129,9 @@ class SlugBrain:
       self.body.set_alarm(1)
 
     if self.state == 'harvest':
+      if self.body.amount < 0.5:
+        self.state = 'flee'
+        self.tempstate = 'harvest'
       if self.have_resource:
         if message == 'timer':
           self.target = self.body.find_nearest('Nest')
@@ -138,7 +161,7 @@ world_specification = {
   'obstacles': 5,
   'resources': 5,
   'slugs': 5,
-  'mantises': 5,
+  'mantises': 10,
 }
 
 brain_classes = {
